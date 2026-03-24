@@ -4,50 +4,73 @@ namespace App\Services;
 
 use RouterOS\Client;
 use RouterOS\Query;
-use App\Models\MikrotikSetting;
 
 class MikrotikService
 {
+
     protected $client;
 
     public function __construct()
     {
-        $setting = MikrotikSetting::first();
 
-        $this->client = new Client([
-            'host' => $setting->host,
-            'user' => $setting->username,
-            'pass' => $setting->password,
-            'port' => $setting->port ?? 8728,
-        ]);
+        try{
+
+            $this->client = new Client([
+                "host" => config("mikrotik.host"),
+                "user" => config("mikrotik.user"),
+                "pass" => config("mikrotik.password"),
+                "port" => config("mikrotik.port")
+            ]);
+
+        }catch(\Exception $e){
+
+            $this->client = null;
+
+        }
+
     }
 
     public function getSecrets()
     {
-        $query = new Query('/ppp/secret/print');
+
+        if(!$this->client) return [];
+
+        $query = new Query("/ppp/secret/print");
 
         return $this->client->query($query)->read();
+
     }
 
     public function getActive()
+{
+    $query = new \RouterOS\Query('/ppp/active/print');
+
+    $result = $this->client->query($query)->read();
+
+    return $result;
+}
+
+    public function disconnect($username)
     {
-        $query = new Query('/ppp/active/print');
 
-        return $this->client->query($query)->read();
+        if(!$this->client) return false;
+
+        $query = (new Query("/ppp/active/print"))
+            ->where("name",$username);
+
+        $active = $this->client->query($query)->read();
+
+        if(empty($active)) return false;
+
+        $id = $active[0][".id"];
+
+        $remove = (new Query("/ppp/active/remove"))
+            ->equal(".id",$id);
+
+        $this->client->query($remove)->read();
+
+        return true;
+
     }
-    public function disconnectUser($username)
-{
-    $query = new Query('/ppp/active/remove');
-    $query->equal('numbers', $username);
 
-    return $this->client->query($query)->read();
-}
-public function getTraffic()
-{
-    $query = new Query('/interface/monitor-traffic');
-    $query->equal('interface', 'ether1');
-    $query->equal('once');
-
-    return $this->client->query($query)->read();
-}
 }

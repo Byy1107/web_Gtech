@@ -7,57 +7,82 @@ use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
-    // LIST customers (pagination + search)
     public function index(Request $request)
     {
-        $query = Customer::query();
+        $query = Customer::with(['package', 'odp']);
 
         if ($request->has('search')) {
-            $query->where('name','like','%'.$request->search.'%')
-                  ->orWhere('phone','like','%'.$request->search.'%')
-                  ->orWhere('ppp_secret','like','%'.$request->search.'%');
+            $query->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('phone', 'like', '%' . $request->search . '%')
+                  ->orWhere('pppoe_username', 'like', '%' . $request->search . '%');
         }
 
-        return $query->latest()->paginate(10);
+        $customers = $query->latest()->paginate(10);
+        
+        return response()->json([
+            'data' => $customers->items(),
+            'meta' => [
+                'current_page' => $customers->currentPage(),
+                'last_page' => $customers->lastPage(),
+                'per_page' => $customers->perPage(),
+                'total' => $customers->total()
+            ]
+        ]);
     }
 
-    // CREATE customer
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'pppoe_username' => 'required|string|max:100|unique:customers',
             'phone' => 'nullable|string|max:50',
-            'address' => 'nullable|string',
-            'ppp_secret' => 'nullable|string|max:100',
+            'package_id' => 'nullable|exists:packages,id',
+            'odp_id' => 'nullable|exists:odps,id',
             'status' => 'in:active,suspended,terminated'
         ]);
 
-        return Customer::create($validated);
+        $customer = Customer::create($validated);
+        
+        return response()->json([
+            'data' => $customer->load(['package', 'odp'])
+        ], 201);
     }
 
-    // SHOW single customer
     public function show($id)
     {
-        return Customer::findOrFail($id);
+        $customer = Customer::with(['package', 'odp'])->findOrFail($id);
+        
+        return response()->json([
+            'data' => $customer
+        ]);
     }
 
-    // UPDATE customer
     public function update(Request $request, $id)
     {
         $customer = Customer::findOrFail($id);
 
-        $customer->update($request->all());
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'pppoe_username' => 'sometimes|required|string|max:100|unique:customers,pppoe_username,' . $id,
+            'phone' => 'nullable|string|max:50',
+            'package_id' => 'nullable|exists:packages,id',
+            'odp_id' => 'nullable|exists:odps,id',
+            'status' => 'in:active,suspended,terminated'
+        ]);
 
-        return $customer;
+        $customer->update($validated);
+        
+        return response()->json([
+            'data' => $customer->load(['package', 'odp'])
+        ]);
     }
 
-    // DELETE customer
     public function destroy($id)
     {
         Customer::destroy($id);
 
         return response()->json([
-            "message" => "Customer deleted"
+            "message" => "Customer deleted successfully"
         ]);
     }
 }

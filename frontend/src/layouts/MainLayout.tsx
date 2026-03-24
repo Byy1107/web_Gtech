@@ -1,25 +1,29 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import Sidebar from '@/components/Sidebar';
-import Navbar from '@/components/Navbar';
-import { cn } from '@/utils';
+import { Outlet } from "react-router-dom"
+import Sidebar from "../components/Sidebar"
+import Navbar from "../components/Navbar"
 
-interface MainLayoutProps {
-  className?: string;
-}
+export default function MainLayout() {
 
-const MainLayout: React.FC<MainLayoutProps> = ({ className }) => {
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <div className="lg:pl-64">
-        <Navbar />
-        <main className={cn('p-6', className)}>
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  );
-};
 
-export default MainLayout;
+    <div className="flex min-h-screen bg-slate-950 text-white">
+
+      <Sidebar/>
+
+      <div className="flex-1 flex flex-col">
+
+        <Navbar/>
+
+        <main className="p-6 max-w-7xl mx-auto w-full">
+
+          <Outlet/>
+
+        </main>
+
+      </div>
+
+    </div>
+
+  )
+
+}

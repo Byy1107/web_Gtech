@@ -9,25 +9,54 @@ class OdpController extends Controller
 {
     public function index()
     {
-        return Odp::all();
+        $odps = Odp::withCount('customers')->get();
+        
+        return response()->json([
+            'data' => $odps
+        ]);
     }
 
     public function store(Request $request)
     {
-        return Odp::create($request->all());
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'location' => 'required|string|max:255',
+            'capacity' => 'required|integer|min:1',
+            'used_ports' => 'nullable|integer|min:0'
+        ]);
+
+        $odp = Odp::create($validated);
+        
+        return response()->json([
+            'data' => $odp->loadCount('customers')
+        ], 201);
     }
 
     public function show($id)
     {
-        return Odp::findOrFail($id);
+        $odp = Odp::withCount('customers')->findOrFail($id);
+        
+        return response()->json([
+            'data' => $odp
+        ]);
     }
 
     public function update(Request $request, $id)
     {
         $odp = Odp::findOrFail($id);
-        $odp->update($request->all());
 
-        return $odp;
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'location' => 'sometimes|required|string|max:255',
+            'capacity' => 'sometimes|required|integer|min:1',
+            'used_ports' => 'nullable|integer|min:0'
+        ]);
+
+        $odp->update($validated);
+        
+        return response()->json([
+            'data' => $odp->loadCount('customers')
+        ]);
     }
 
     public function destroy($id)
@@ -35,7 +64,7 @@ class OdpController extends Controller
         Odp::destroy($id);
 
         return response()->json([
-            "message"=>"ODP deleted"
+            "message" => "ODP deleted successfully"
         ]);
     }
 }
